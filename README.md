@@ -24,14 +24,20 @@
 
 每个阶段 4 个任务，每天约 20 分钟阅读、55 分钟动手、15 分钟记录或自测。若 Python 已熟悉，可将第 1 阶段压缩，留出时间阅读论文。若编码吃力，可延长到 5–6 周，保持任务顺序即可。
 
+## 在线访问
+
+| 入口 | 地址 |
+| --- | --- |
+| 📖 学习页 | [amn765.github.io/agent-harness-study](https://amn765.github.io/agent-harness-study/) |
+| 📊 进度面板 | [amn765.github.io/agent-harness-study/tracker](https://amn765.github.io/agent-harness-study/tracker/) |
+| 💻 源码仓库 | [github.com/amn765/agent-harness-study](https://github.com/amn765/agent-harness-study) |
+
 ## 如何使用
 
-1. 双击打开本地 [进度面板](tracker/index.html)。勾选任务、每日打卡、查看热力图；数据保存在当前浏览器的 `localStorage`。
-2. 本地阅读可直接打开 `plan/` 中的 Markdown 文件。若要用 [学习页](index.html)阅读，需在本目录启动本地服务器：`python -m http.server 8000`，再访问 `http://localhost:8000/`。学习页通过 `fetch` 读取 Markdown，直接双击 `index.html` 通常会被浏览器拦截。
-3. 同一浏览器、同一网址来源下，学习页和面板共享勾选状态。换设备前在面板导出 JSON，在新设备导入。`file://` 与 `http://localhost:8000` 属于不同来源，进度可能各自独立，建议固定使用一种打开方式。
+1. 在线打开学习页与进度面板。勾选任务、每日打卡、查看热力图；进度保存在当前浏览器的 `localStorage`。
+2. 同一浏览器、同一网站来源下，学习页和面板共享勾选状态。换设备或浏览器前，在面板导出 JSON 并在新设备导入。之前本地 `file://` 或 `http://localhost:8000` 中的进度不会自动迁移到线上站点。
+3. 若离线阅读，可直接打开 `plan/` 中的 Markdown 文件。若要在本地使用[学习页](index.html)，请在本目录运行 `python -m http.server 8000`，再访问 `http://localhost:8000/`；直接双击 `index.html` 通常无法加载 Markdown。
 4. 每天留下一个小产物：概念图、脚本、日志、实验表或研究笔记。任务完成标准写在各阶段文档中。
-
-目前未部署，也未建立 GitHub 仓库。
 
 ## 第一轮最终产物
 
