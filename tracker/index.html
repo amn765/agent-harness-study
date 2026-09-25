@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Harness 学习实验室 · 进度面板</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2330; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #6d8cff;
+    --green: #3fb950; --blue: #58a6ff;
+    --hm0: #21262d; --hm1: #243d66; --hm2: #355e9d; --hm3: #5677d8; --hm4: #8fa2ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    line-height: 1.6; padding: 24px 16px 80px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  h1 { font-size: 26px; display: flex; align-items: center; gap: 10px; }
+  h1 .flame { font-size: 28px; }
+  .subtitle { color: var(--muted); margin: 4px 0 24px; font-size: 14px; }
+
+  /* 顶部统计卡 */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; text-align: center;
+  }
+  .stat .num { font-size: 30px; font-weight: 700; color: var(--accent); }
+  .stat .num.green { color: var(--green); }
+  .stat .num.blue { color: var(--blue); }
+  .stat .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* 总进度条 */
+  .overall {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; margin-bottom: 20px;
+  }
+  .overall .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .overall .title-sm { font-size: 14px; color: var(--muted); }
+  .overall .pct { font-size: 20px; font-weight: 700; }
+  .bar { height: 14px; background: var(--hm0); border-radius: 7px; overflow: hidden; }
+  .bar > div {
+    height: 100%; border-radius: 7px;
+    background: linear-gradient(90deg, var(--hm3), var(--accent));
+    transition: width .5s ease;
+  }
+  .milestone { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .milestone b { color: var(--text); }
+
+  /* 热力图 */
+  .heat-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; margin-bottom: 20px;
+  }
+  .heat-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .heat-head h2 { font-size: 15px; }
+  #checkinBtn {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 8px 16px; font-size: 14px; cursor: pointer; font-weight: 600;
+  }
+  #checkinBtn:disabled { background: var(--green); cursor: default; }
+  #heatmap { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 4px; }
+  .hm-col { display: flex; flex-direction: column; gap: 3px; }
+  .hm-cell { width: 12px; height: 12px; border-radius: 3px; background: var(--hm0); flex-shrink: 0; }
+  .hm-cell.l1 { background: var(--hm1); } .hm-cell.l2 { background: var(--hm2); }
+  .hm-cell.l3 { background: var(--hm3); } .hm-cell.l4 { background: var(--hm4); }
+  .hm-cell.today { outline: 1.5px solid var(--blue); }
+  .heat-legend { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 11px; color: var(--muted); justify-content: flex-end; }
+
+  /* 阶段卡片 */
+  .stage {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    margin-bottom: 12px; overflow: hidden;
+  }
+  .stage-head {
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer;
+    user-select: none;
+  }
+  .stage-head:hover { background: var(--panel2); }
+  .stage-head .arrow { color: var(--muted); transition: transform .2s; font-size: 12px; }
+  .stage.open .arrow { transform: rotate(90deg); }
+  .stage-head .name { font-weight: 600; flex: 1; }
+  .stage-head .name .days { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 8px; }
+  .stage-head .doc-link { text-decoration: none; font-size: 15px; flex-shrink: 0; padding: 2px 4px; }
+  .stage-head .mini-bar { width: 110px; height: 8px; background: var(--hm0); border-radius: 4px; overflow: hidden; flex-shrink: 0; }
+  .stage-head .mini-bar > div { height: 100%; background: var(--accent); border-radius: 4px; transition: width .4s; }
+  .stage-head .count { font-size: 12px; color: var(--muted); width: 44px; text-align: right; flex-shrink: 0; }
+  .stage-head .trophy { width: 22px; text-align: center; }
+  .stage-body { display: none; border-top: 1px solid var(--border); padding: 8px 18px 14px; }
+  .stage.open .stage-body { display: block; }
+  .task { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; }
+  .task input { margin-top: 5px; width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .task label { cursor: pointer; font-size: 14px; }
+  .task.done label { color: var(--muted); text-decoration: line-through; }
+  .task .date { font-size: 11px; color: var(--green); margin-left: 8px; text-decoration: none; display: inline-block; }
+
+  /* 底部工具 */
+  .tools { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+  .tools button {
+    background: var(--panel); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+  }
+  .tools button:hover { color: var(--text); border-color: var(--muted); }
+  .tools button.danger:hover { color: #f85149; border-color: #f85149; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+  @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="flame">🧭</span> Agent Harness 学习实验室 · 进度面板</h1>
+  <p class="subtitle">28 天从零入门，走向持续学习与自进化 harness 研究 —— 每天进步一点点，曲线自己会说话。　<a href="../index.html" style="color:var(--blue);text-decoration:none">📖 打开学习文档 ›</a></p>
+
+  <div class="stats">
+    <div class="stat"><div class="num" id="statPct">0%</div><div class="label">总进度</div></div>
+    <div class="stat"><div class="num blue" id="statDone">0/0</div><div class="label">已完成任务</div></div>
+    <div class="stat"><div class="num green" id="statStreak">0</div><div class="label">连续学习天数 🔥</div></div>
+    <div class="stat"><div class="num blue" id="statDays">0</div><div class="label">累计学习天数</div></div>
+  </div>
+
+  <div class="overall">
+    <div class="row">
+      <span class="title-sm">总体进度</span>
+      <span class="pct" id="overallPct">0%</span>
+    </div>
+    <div class="bar"><div id="overallBar" style="width:0%"></div></div>
+    <div class="milestone" id="milestone"></div>
+  </div>
+
+  <div class="heat-card">
+    <div class="heat-head">
+      <h2>📅 学习热力图（近 26 周）</h2>
+      <button id="checkinBtn" onclick="checkinToday()">今日打卡 ✓</button>
+    </div>
+    <div id="heatmap"></div>
+    <div class="heat-legend">
+      少 <span class="hm-cell"></span><span class="hm-cell l1"></span><span class="hm-cell l2"></span><span class="hm-cell l3"></span><span class="hm-cell l4"></span> 多
+    </div>
+  </div>
+
+  <div id="stages"></div>
+
+  <div class="tools">
+    <button onclick="exportData()">📤 导出进度</button>
+    <button onclick="document.getElementById('importFile').click()">📥 导入进度</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
+    <button class="danger" onclick="resetData()">🗑 重置全部</button>
+  </div>
+  <p class="hint">进度保存在浏览器本地（localStorage）。换浏览器或重装系统前，请先「导出进度」备份。</p>
+</div>
+
+<script>
+const STAGES = [
+  { id:'s0', name:'阶段 0 · 概念与边界', days:'第 1–4 天', tasks:[
+    '0-1 用一张图解释 agent 循环',
+    '0-2 列出 harness 的可控旋钮',
+    '0-3 观察一次真实长任务的交接',
+    '0-4 建立术语卡与第一版研究问题'
+  ] },
+  { id:'s1', name:'阶段 1 · Python 与任务环境', days:'第 5–8 天', tasks:[
+    '1-1 跑通 Python 的最小数据结构',
+    '1-2 设计两个只读工具',
+    '1-3 建立可重置的小任务集',
+    '1-4 用 JSONL 保存可审计轨迹'
+  ] },
+  { id:'s2', name:'阶段 2 · 最小 Agent 循环', days:'第 9–12 天', tasks:[
+    '2-1 实现结构化动作协议',
+    '2-2 写可替换的模拟策略',
+    '2-3 ⭐ 运行有预算的 agent 循环',
+    '2-4 做第一次端到端回放'
+  ] },
+  { id:'s3', name:'阶段 3 · 可靠性与长期运行', days:'第 13–16 天', tasks:[
+    '3-1 限制工具权限与资源预算',
+    '3-2 保存检查点并从中断恢复',
+    '3-3 设计有限上下文与交接摘要',
+    '3-4 注入故障并写出状态机'
+  ] },
+  { id:'s4', name:'阶段 4 · 评测与实验方法', days:'第 17–20 天', tasks:[
+    '4-1 冻结任务集与评分规则',
+    '4-2 写统一评测脚本',
+    '4-3 计算效果、成本与保持率',
+    '4-4 做一个单变量消融'
+  ] },
+  { id:'s5', name:'阶段 5 · 持续学习与自进化', days:'第 21–24 天', tasks:[
+    '5-1 阅读三篇论文并建立比较表',
+    '5-2 实现受约束的经验记忆',
+    '5-3 ⭐ 建立候选更新、回归测试与回滚',
+    '5-4 检查遗忘、迁移与成本'
+  ] },
+  { id:'s6', name:'阶段 6 · 科研选题与复现', days:'第 25–28 天', tasks:[
+    '6-1 写一页研究问题与假设',
+    '6-2 冻结协议并运行小型复现',
+    '6-3 分析反例与效度威胁',
+    '6-4 交付研究备忘录与第二轮路线'
+  ] },
+];
+
+const MILESTONES = [
+  [0, '🌱 起步'], [4, '🧩 看懂系统'], [12, '🔁 跑通循环'], [20, '📊 会做评测'], [28, '🏁 研究起点']
+];
+
+const KEY = 'agent-harness-study-v1';
+let state = load();
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && s.done && s.checkins) return s;
+  } catch (e) {}
+  return { done: {}, checkins: {}, openStage: 's0' };
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+function todayStr(d) {
+  d = d || new Date();
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+  return y + '-' + m + '-' + dd;
+}
+
+function toggleTask(tid) {
+  if (state.done[tid]) delete state.done[tid];
+  else state.done[tid] = todayStr();
+  save(); render();
+}
+
+function checkinToday() {
+  state.checkins[todayStr()] = true;
+  save(); render();
+}
+
+function toggleStage(sid) {
+  state.openStage = (state.openStage === sid) ? null : sid;
+  save(); render();
+}
+
+/* —— 统计 —— */
+function activityByDate() {
+  const map = {};
+  for (const tid in state.done) {
+    const d = state.done[tid];
+    map[d] = (map[d] || 0) + 1;
+  }
+  for (const d in state.checkins) map[d] = (map[d] || 0) + 1;
+  return map;
+}
+
+function calcStreak(act) {
+  let streak = 0;
+  const day = new Date();
+  if (!act[todayStr(day)]) day.setDate(day.getDate() - 1); // 今天还没学，从昨天往回数
+  while (act[todayStr(day)]) { streak++; day.setDate(day.getDate() - 1); }
+  return streak;
+}
+
+/* —— 渲染 —— */
+function render() {
+  const act = activityByDate();
+  const total = STAGES.reduce((n, s) => n + s.tasks.length, 0);
+  const done = Object.keys(state.done).length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+
+  document.getElementById('statPct').textContent = pct + '%';
+  document.getElementById('statDone').textContent = done + '/' + total;
+  document.getElementById('statStreak').textContent = calcStreak(act);
+  document.getElementById('statDays').textContent = Object.keys(act).length;
+  document.getElementById('overallPct').textContent = pct + '%';
+  document.getElementById('overallBar').style.width = pct + '%';
+
+  let ms = MILESTONES[0];
+  for (const m of MILESTONES) if (done >= m[0]) ms = m;
+  let next = MILESTONES.find(m => m[0] > done);
+  document.getElementById('milestone').innerHTML =
+    '当前称号：<b>' + ms[1] + '</b>' +
+    (next ? '　·　再完成 <b>' + (next[0] - done) + '</b> 个任务解锁下一称号' : '');
+
+  const btn = document.getElementById('checkinBtn');
+  if (act[todayStr()]) { btn.disabled = true; btn.textContent = '今日已学习 ✓'; }
+  else { btn.disabled = false; btn.textContent = '今日打卡 ✓'; }
+
+  renderHeatmap(act);
+  renderStages();
+}
+
+function renderHeatmap(act) {
+  const el = document.getElementById('heatmap');
+  el.innerHTML = '';
+  const today = new Date();
+  const end = new Date(today);
+  end.setDate(end.getDate() + (6 - end.getDay())); // 本周六
+  const start = new Date(end);
+  start.setDate(start.getDate() - 26 * 7 + 1);
+
+  let col = null;
+  const cur = new Date(start);
+  const tStr = todayStr();
+  while (cur <= end) {
+    if (cur.getDay() === 0 || !col) { col = document.createElement('div'); col.className = 'hm-col'; el.appendChild(col); }
+    const cell = document.createElement('div');
+    const ds = todayStr(cur);
+    const n = act[ds] || 0;
+    let lv = 0;
+    if (n >= 1) lv = 1; if (n >= 2) lv = 2; if (n >= 3) lv = 3; if (n >= 5) lv = 4;
+    cell.className = 'hm-cell' + (lv ? ' l' + lv : '') + (ds === tStr ? ' today' : '');
+    if (cur > today) cell.style.visibility = 'hidden';
+    cell.title = ds + '：' + n + ' 项学习记录';
+    col.appendChild(cell);
+    cur.setDate(cur.getDate() + 1);
+  }
+  el.scrollLeft = el.scrollWidth;
+}
+
+function renderStages() {
+  const el = document.getElementById('stages');
+  el.innerHTML = '';
+  STAGES.forEach(s => {
+    const doneN = s.tasks.filter((_, i) => state.done[s.id + 't' + i]).length;
+    const pct = Math.round(doneN / s.tasks.length * 100);
+    const open = state.openStage === s.id;
+
+    const card = document.createElement('div');
+    card.className = 'stage' + (open ? ' open' : '');
+
+    const head = document.createElement('div');
+    head.className = 'stage-head';
+    head.onclick = () => toggleStage(s.id);
+    head.innerHTML =
+      '<span class="arrow">▶</span>' +
+      '<span class="name">' + s.name + '<span class="days">' + s.days + '</span></span>' +
+      '<a class="doc-link" href="../index.html#' + s.id + '" title="打开学习文档" onclick="event.stopPropagation()">📖</a>' +
+      '<span class="trophy">' + (doneN === s.tasks.length ? '🏆' : '') + '</span>' +
+      '<div class="mini-bar"><div style="width:' + pct + '%"></div></div>' +
+      '<span class="count">' + doneN + '/' + s.tasks.length + '</span>';
+    card.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'stage-body';
+    s.tasks.forEach((t, i) => {
+      const tid = s.id + 't' + i;
+      const checked = !!state.done[tid];
+      const row = document.createElement('div');
+      row.className = 'task' + (checked ? ' done' : '');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.id = tid; cb.checked = checked;
+      cb.onchange = () => toggleTask(tid);
+      const label = document.createElement('label');
+      label.htmlFor = tid;
+      label.textContent = t;
+      if (checked) {
+        const d = document.createElement('span');
+        d.className = 'date'; d.textContent = '✓ ' + state.done[tid];
+        label.appendChild(d);
+      }
+      row.appendChild(cb); row.appendChild(label);
+      body.appendChild(row);
+    });
+    card.appendChild(body);
+    el.appendChild(card);
+  });
+}
+
+/* —— 导入导出 —— */
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'agent-harness-study-v1-' + todayStr() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const s = JSON.parse(e.target.result);
+      if (!s.done || !s.checkins) throw new Error('格式不对');
+      state = s; save(); render();
+      alert('导入成功！');
+    } catch (err) { alert('导入失败：不是有效的进度文件'); }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+function resetData() {
+  if (confirm('确定要清空全部进度吗？此操作不可恢复（建议先导出备份）。')) {
+    state = { done: {}, checkins: {}, openStage: 's0' };
+    save(); render();
+  }
+}
+
+render();
+// 从学习文档页返回时（含 bfcache 恢复），重新读取进度
+window.addEventListener('pageshow', () => { state = load(); render(); });
+</script>
+</body>
+</html>
